@@ -1,0 +1,10 @@
+{
+  "2025-09-01": {
+    "day_start_equity": 10000.0,
+    "halted": false
+  },
+  "2025-09-02": {
+    "day_start_equity": 2017.85,
+    "halted": false
+  }
+}
