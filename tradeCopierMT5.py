@@ -167,11 +167,20 @@ SYMBOL_UNITS_PER_LOT = {
 }
 
 FOLLOWER_UNITS_PER_LOT = {
-    # "XAUUSDm": 100,
+    # "EURUSD": 100_000,
+    # "GBPUSD": 100_000,
+    # "USDCAD": 100_000,
+    # "USDJPY": 100_000,
+    # "XAUUSD": 100,
+    "XAGUSD": 5000,
+    "SP500.r": 1,
+    "NQ100.r": 1,
+    "DJ30.r": 1,
+    "GER40.r": 1,
 }
 
 # ---- Sizing rule: K × (master % risk) ----
-VOLUME_MODE: str = "risk_master_multiple"  # default mode used in this build
+VOLUME_MODE: str = "multiplier"  # default mode used in this build
 RISK_MULTIPLIER: float = 10.0              # "10× the master's risk %"
 
 # (Other sizing modes kept available for completeness; not used unless you switch VOLUME_MODE)
@@ -194,7 +203,7 @@ DEFAULT_STOP_DISTANCE_PRICE = {
 }
 
 # ---- Daily loss cap (ONLY cap retained) ----
-DAILY_LOSS_LIMIT_PCT: float = 0.10   # e.g., 0.10 = 10% of day-start equity
+DAILY_LOSS_LIMIT_PCT: float = 0.00   # e.g., 0.10 = 10% of day-start equity
 HALT_CLOSE_ALL: bool = True          # close all copier positions on halt
 
 # ---- Files ----
@@ -207,7 +216,7 @@ SIRIX_BUY_VALUE, SIRIX_SELL_VALUE = 0, 1
 
 # ---- Debug (one-time prints on startup) ----
 DEBUG_PRINT_SYMBOLS_ON_START: bool = True   # prints master symbols + mapping + MT5 tick spec
-DEBUG_PRINT_RISK_PREVIEW: bool = True       # prints mLots, stop distance, master % risk, follower lots
+DEBUG_PRINT_RISK_PREVIEW: bool = False       # prints mLots, stop distance, master % risk, follower lots
 RISK_PREVIEW_LIMIT: int = 12                # how many positions to show in the preview
 DEBUG_PRINT_SIRIX_SUMMARY: bool = True
 DEBUG_DUMP_SIRIX_USERDATA: bool = True
