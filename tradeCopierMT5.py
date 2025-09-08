@@ -172,11 +172,11 @@ FOLLOWER_UNITS_PER_LOT = {
     # "USDCAD": 100_000,
     # "USDJPY": 100_000,
     # "XAUUSD": 100,
-    "XAGUSD": 5000,
-    "SP500.r": 1,
-    "NQ100.r": 1,
-    "DJ30.r": 1,
-    "GER40.r": 1,
+    # "XAGUSD": 5000,
+    # "SP500.r": 1,
+    # "NAS100.r": 1,
+    # "DJ30.r": 1,
+    # "GER40.r": 1,
 }
 
 # ---- Sizing rule: K × (master % risk) ----
@@ -185,7 +185,7 @@ RISK_MULTIPLIER: float = 10.0              # "10× the master's risk %"
 
 # (Other sizing modes kept available for completeness; not used unless you switch VOLUME_MODE)
 FIXED_LOTS: float = 0.10
-LOT_MULTIPLIER: float = 1.0
+LOT_MULTIPLIER: float = 10.0
 PER_TRADE_RISK_PCT: float = 0.10  # only used if you switch VOLUME_MODE="risk_percent"
 
 # Default SL distance (price units) if master has NO SL or invalid distance
@@ -664,13 +664,18 @@ def convert_master_amount_to_lots(master_symbol: str, master_amount: float, foll
     """Used only by non-risk modes; kept for completeness."""
     if master_amount is None:
         return 0.0
+
     if MASTER_AMOUNT_MODE == "lots":
         base_lots = float(master_amount)
+
     elif MASTER_AMOUNT_MODE == "units":
-        units_per_lot = get_follower_units_per_lot(follower_symbol) if follower_symbol else get_units_per_lot(master_symbol)
+        # IMPORTANT: use the master's units-per-lot so base_lots == master_lots
+        units_per_lot = get_units_per_lot(master_symbol)
         base_lots = float(master_amount) / float(units_per_lot)
-    else:
+
+    else: # "contracts"
         base_lots = float(master_amount)
+
     if VOLUME_MODE == "fixed":
         lots = FIXED_LOTS
     elif VOLUME_MODE == "multiplier":
@@ -679,6 +684,7 @@ def convert_master_amount_to_lots(master_symbol: str, master_amount: float, foll
         lots = base_lots * calc_equity_ratio()
     else:
         lots = base_lots
+
     return max(lots, 0.0)
 
 # ------------------------- MT5 ops ---------------------------
@@ -970,7 +976,7 @@ def print_preview_table(master_snap: Dict[Any, MasterPosition]) -> None:
         m_sym = mp.symbol
         f_sym = map_symbol(m_sym)
         # In risk_master_multiple, follower target lots depend on master equity/tick data; preview shows 0
-        f_lots = 0.0 if f_sym else 0.0
+        f_lots = convert_master_amount_to_lots(m_sym, mp.amount, f_sym) if f_sym else 0.0
         act = "BLOCKED" if f_sym is None else ("OPEN" if oid not in link_map else "NONE")
         print(fmt.format(str(oid), m_sym, sirix_dir_char(mp.side), f"{mp.amount:.2f}", str(f_sym), f"{f_lots:.2f}", act))
     print()
