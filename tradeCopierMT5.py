@@ -94,15 +94,15 @@ SHOW_PREVIEW_TABLE: bool = True
 # ---- SiRiX master ----
 SIRIX_API_URL = "https://restapi-real3.sirixtrader.com/api/UserStatus/GetUserTransactions"
 SIRIX_TOKEN: str = "t1_a7xeQOJPnfBzuCncH60yjLFu"
-SIRIX_MASTER_USER_ID: str = "215934"    # 215934
+SIRIX_MASTER_USER_ID: str = "214422"    # 215934
 
 # ---- Polling ----
 POLL_INTERVAL_SEC: float = 1.0
 
 # ---- MT5 follower (terminal must be running) ----
 AUTO_LOGIN: bool = True
-MT5_LOGIN: int = 11002759
-MT5_PASSWORD: str = "Education123!"
+MT5_LOGIN: int = 11029797
+MT5_PASSWORD: str = "0D5eq@dT"
 MT5_SERVER: str = "VantageGlobalPrimeLLP-Demo"
 
 # ---- MT5 terminal launching (run a specific/second terminal) ----
