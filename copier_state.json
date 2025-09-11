@@ -30,5 +30,17 @@
   "2025-09-08": {
     "day_start_equity": 0.99,
     "halted": false
+  },
+  "2025-09-09": {
+    "day_start_equity": 1941.3,
+    "halted": false
+  },
+  "2025-09-10": {
+    "day_start_equity": 1941.3,
+    "halted": false
+  },
+  "2025-09-11": {
+    "day_start_equity": 1932.91,
+    "halted": false
   }
 }
