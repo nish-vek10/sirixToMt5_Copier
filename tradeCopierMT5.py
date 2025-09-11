@@ -53,7 +53,7 @@ REQUIRED SETUP
 4. Symbols visible in MT5 "Market Watch" (script will try to select).
 
 ---------------------------------------------------
-Risk = 10× Master Risk %  + Daily Loss Cap (No strict caps)
+Lots mirrored 1:1; risk features not used
 ---------------------------------------------------
 
 • Sizing: follower risks K × (master's % risk) per trade, K=RISK_MULTIPLIER (default 10.0).
@@ -94,16 +94,16 @@ SHOW_PREVIEW_TABLE: bool = True
 # ---- SiRiX master ----
 SIRIX_API_URL = "https://restapi-real3.sirixtrader.com/api/UserStatus/GetUserTransactions"
 SIRIX_TOKEN: str = "t1_a7xeQOJPnfBzuCncH60yjLFu"
-SIRIX_MASTER_USER_ID: str = "214422"
+SIRIX_MASTER_USER_ID: str = "215934"    # 215934
 
 # ---- Polling ----
 POLL_INTERVAL_SEC: float = 1.0
 
 # ---- MT5 follower (terminal must be running) ----
 AUTO_LOGIN: bool = True
-MT5_LOGIN: int = 17048351
+MT5_LOGIN: int = 11002759
 MT5_PASSWORD: str = "Education123!"
-MT5_SERVER: str = "VantageInternational-Live 10"
+MT5_SERVER: str = "VantageGlobalPrimeLLP-Demo"
 
 # ---- MT5 terminal launching (run a specific/second terminal) ----
 AUTO_LAUNCH_MT5: bool = True
@@ -132,10 +132,10 @@ COPY_PENDING_ORDERS: bool = False
 
 # ---- Instrument mapping (SiRiX -> MT5) ----
 SYMBOL_MAP = {
-    "NQ100.": "NAS100.r",
-    "GER40.": "GER40.r",
-    "WS30.":  "DJ30.r",
-    "S&P500": "SP500.r",
+    "NQ100.": "NAS100.i",
+    "GER40.": "GER40.i",
+    "WS30.":  "DJ30.i",
+    "S&P500": "SP500.i",
     "XAUUSD": "XAUUSD",
     "XAGUSD": "XAGUSD",
     "EURUSD": "EURUSD",
@@ -167,35 +167,37 @@ SYMBOL_UNITS_PER_LOT = {
 }
 
 FOLLOWER_UNITS_PER_LOT = {
-    # "EURUSD": 100_000,
-    # "GBPUSD": 100_000,
-    # "USDCAD": 100_000,
-    # "USDJPY": 100_000,
-    # "XAUUSD": 100,
-    # "XAGUSD": 5000,
-    # "SP500.r": 1,
-    # "NAS100.r": 1,
-    # "DJ30.r": 1,
-    # "GER40.r": 1,
+    "EURUSD": 100_000,
+    "GBPUSD": 100_000,
+    "USDCAD": 100_000,
+    "USDJPY": 100_000,
+    "XAUUSD": 100,
+    "XAGUSD": 5000,
+    "SP500.i": 1,
+    "NAS100.i": 1,
+    "DJ30.i": 1,
+    "GER40.i": 1,
 }
 
 # ---- Sizing rule: K × (master % risk) ----
 VOLUME_MODE: str = "multiplier"  # default mode used in this build
-RISK_MULTIPLIER: float = 10.0              # "10× the master's risk %"
+RISK_MULTIPLIER: float = 1.0              # "10× the master's risk %"
 
 # (Other sizing modes kept available for completeness; not used unless you switch VOLUME_MODE)
 FIXED_LOTS: float = 0.10
-LOT_MULTIPLIER: float = 10.0
+LOT_MULTIPLIER: float = 1.0
 PER_TRADE_RISK_PCT: float = 0.10  # only used if you switch VOLUME_MODE="risk_percent"
+LOT_ROUNDING_MODE = "nearest"  # "down" | "nearest" | "up"
+PNL_PARITY_MODE: bool = True   # set True for PnL parity; False for same-lot mirroring
 
 # Default SL distance (price units) if master has NO SL or invalid distance
 DEFAULT_STOP_DISTANCE_PRICE = {
     "XAUUSD":  10.0,   # $10
     "XAGUSD": 0.50,    # $0.50
-    "NAS100.r": 50.0,  # index pts
-    "GER40.r": 50.0,
-    "DJ30.r":  100.0,
-    "SP500.r": 25.0,
+    "NAS100.i": 50.0,  # index pts
+    "GER40.i": 50.0,
+    "DJ30.i":  100.0,
+    "SP500.i": 25.0,
     "EURUSD": 0.0020,  # 20 pips
     "GBPUSD": 0.0020,
     "USDCAD": 0.0020,
@@ -485,23 +487,34 @@ def pick_filling_mode(symbol: str) -> int:
 
 def _order_send_with_fallback(request: dict, symbol: str):
     if DRY_RUN:
-        class _Dummy: retcode=mt5.TRADE_RETCODE_DONE; order=-1; deal=-1
+        class _Dummy:
+            retcode = mt5.TRADE_RETCODE_DONE
+            order = -1
+            deal = -1
         return _Dummy()
+
     seq = [pick_filling_mode(symbol)]
     for m in (mt5.ORDER_FILLING_FOK, mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_RETURN):
-        if m not in seq: seq.append(m)
+        if m not in seq:
+            seq.append(m)
+
     last = None
     for mode in seq:
         request["type_filling"] = mode
         res = mt5.order_send(request)
         last = res
+        if res is None:
+            LOG(f"[trade] order_send returned None for {symbol} (mode={mode}).", logging.ERROR)
+            continue
         if res.retcode == 10030:  # unsupported filling
             LOG(f"[filling] {symbol} rejected mode={mode}; trying next...", logging.WARNING)
             continue
         if res.retcode in (mt5.TRADE_RETCODE_DONE, mt5.TRADE_RETCODE_PLACED, mt5.TRADE_RETCODE_DONE_PARTIAL):
             _symbol_filling_cache[symbol] = mode
         return res
-    return last
+
+    return last  # may be None
+
 
 def normalize_lot(symbol: str, lots: float) -> float:
     lots = max(lots, 0.0)
@@ -510,12 +523,26 @@ def normalize_lot(symbol: str, lots: float) -> float:
     info = mt5.symbol_info(symbol)
     if info is None:
         return round(lots, 2)
-    step = getattr(info, "volume_step", 0.01) or 0.01
-    min_vol = getattr(info, "volume_min", 0.01) or 0.01
-    max_vol = getattr(info, "volume_max", 100.0) or 100.0
-    lots = math.floor(lots / step) * step
-    lots = max(min_vol, min(lots, max_vol))
-    return lots
+
+    step   = getattr(info, "volume_step", 0.01) or 0.01
+    min_vol= getattr(info, "volume_min", 0.01) or 0.01
+    max_vol= getattr(info, "volume_max", 100.0) or 100.0
+
+    q = lots / step
+    mode = globals().get("LOT_ROUNDING_MODE", "nearest")
+    if mode == "down":
+        q = math.floor(q + 1e-9)
+    elif mode == "up":
+        q = math.ceil(q - 1e-9)
+    else:  # nearest
+        q = round(q)
+
+    lots_q = q * step
+    # clean small float noise and clamp
+    lots_q = float(f"{lots_q:.8f}")
+    lots_q = max(min_vol, min(lots_q, max_vol))
+    return lots_q
+
 
 def validate_stops_for_mt5(symbol: str, side: int, dir01: int,
                            sl: Optional[float], tp: Optional[float],
@@ -649,6 +676,19 @@ def get_units_per_lot(symbol: str) -> float:
 def get_follower_units_per_lot(symbol: str) -> float:
     return FOLLOWER_UNITS_PER_LOT.get(symbol, get_units_per_lot(symbol))
 
+def contract_ratio(master_symbol: str, follower_symbol: Optional[str]) -> float:
+    """
+    Ratio to convert master lots to follower lots so $/point exposure matches.
+    = (master units-per-lot) / (follower units-per-lot)
+    """
+    try:
+        m = float(get_units_per_lot(master_symbol))
+        f = float(get_follower_units_per_lot(follower_symbol or master_symbol))
+        return (m / f) if (m and f) else 1.0
+    except Exception:
+        return 1.0
+
+
 def calc_equity_ratio() -> float:
     global last_sirix_equity
     try:
@@ -661,21 +701,25 @@ def calc_equity_ratio() -> float:
     return float(follower_equity) / float(master_eq)
 
 def convert_master_amount_to_lots(master_symbol: str, master_amount: float, follower_symbol: Optional[str] = None) -> float:
-    """Used only by non-risk modes; kept for completeness."""
+    """
+    Convert the master's 'Amount' to follower lots for NON-risk modes.
+    Works with MASTER_AMOUNT_MODE='units' (kept as requested).
+    If PNL_PARITY_MODE is True, scale lots by the contract ratio so $/point matches.
+    """
     if master_amount is None:
         return 0.0
 
+    # 1) Interpret the master's 'Amount'
     if MASTER_AMOUNT_MODE == "lots":
         base_lots = float(master_amount)
-
     elif MASTER_AMOUNT_MODE == "units":
-        # IMPORTANT: use the master's units-per-lot so base_lots == master_lots
+        # Convert master 'units' to master lots using MASTER contract size
         units_per_lot = get_units_per_lot(master_symbol)
         base_lots = float(master_amount) / float(units_per_lot)
-
-    else: # "contracts"
+    else:  # "contracts"
         base_lots = float(master_amount)
 
+    # 2) Apply volume mode
     if VOLUME_MODE == "fixed":
         lots = FIXED_LOTS
     elif VOLUME_MODE == "multiplier":
@@ -685,7 +729,16 @@ def convert_master_amount_to_lots(master_symbol: str, master_amount: float, foll
     else:
         lots = base_lots
 
+    # 3) PnL parity: scale by contract ratio so $/point matches master
+    if PNL_PARITY_MODE and follower_symbol:
+        r = contract_ratio(master_symbol, follower_symbol)
+        lots *= r
+
+        LOG(f"[parity] {master_symbol}->{follower_symbol} units={master_amount} "
+            f"baseLots={base_lots:.4f} ratio={r:.4f} -> followerLots={lots:.4f}")
+
     return max(lots, 0.0)
+
 
 # ------------------------- MT5 ops ---------------------------
 
@@ -710,19 +763,33 @@ def mt5_open_trade(master_pos: MasterPosition, lots: float, sl: Optional[float],
         return None
     if not mt5_symbol_prepare(symbol):
         return None
+
+    requested_lots = lots
     lots = normalize_lot(symbol, lots)
+
+    if lots <= 0:
+        LOG(f"[size] Requested≈{requested_lots:.4f} -> normalized {symbol} lots={lots:.4f} (<=0 after broker constraints)",
+            logging.WARNING)
+    else:
+        LOG(f"[size] Requested≈{requested_lots:.4f} -> normalized {symbol} lots={lots:.4f}", logging.INFO)
+
     if not safety_checks_ok(symbol, lots, opening=True):
         return None
+
     side = side_to_mt5_order_type(master_pos.side)
     bid, ask = mt5_current_prices(symbol)
+
     if bid is None or ask is None or bid <= 0 or ask <= 0:
         LOG(f"[ERR] No valid price for {symbol}; cannot trade.", logging.ERROR)
         return None
+
     price = ask if side == mt5.ORDER_TYPE_BUY else bid
+
     if not COPY_STOPS:
         sl = None; tp = None
     else:
         sl, tp = validate_stops_for_mt5(symbol, master_pos.side, sirix_dir_01(master_pos.side), sl, tp, price)
+
     req = {
         "action": mt5.TRADE_ACTION_DEAL,
         "symbol": symbol,
@@ -735,15 +802,22 @@ def mt5_open_trade(master_pos: MasterPosition, lots: float, sl: Optional[float],
         "type_time": mt5.ORDER_TIME_GTC,
         "type_filling": mt5.ORDER_FILLING_FOK,
     }
+
     if sl is not None: req["sl"] = sl
     if tp is not None: req["tp"] = tp
+
     if DRY_RUN:
         LOG(f"[DRY] Would open {symbol} {lots} lots side={master_pos.side} @ {price} (SL={sl} TP={tp}).")
         return -1
+
     res = _order_send_with_fallback(req, symbol)
+    if not res:
+        LOG(f"[ERR] MT5 open failed ({symbol}): no response from terminal.", logging.ERROR)
+        return None
     if res.retcode not in (mt5.TRADE_RETCODE_DONE, mt5.TRADE_RETCODE_PLACED, mt5.TRADE_RETCODE_DONE_PARTIAL):
         LOG(f"[ERR] MT5 open failed ({symbol}): retcode={res.retcode} details={res}", logging.ERROR)
         return None
+
     ticket = res.order if res.order else res.deal
     LOG(f"[MT5] Opened {symbol} {lots} lots (ticket {ticket}) for master {master_pos.order_number}.")
     return ticket
@@ -777,10 +851,15 @@ def mt5_close_trade(link: FollowerLink) -> bool:
         "magic": MAGIC_NUMBER,
         "comment": f"Close copy of SiRiX {link.master_order_number}",
     }
+
     res = _order_send_with_fallback(req, symbol)
+    if not res:
+        LOG(f"[ERR] MT5 close failed ticket {link.follower_ticket}: no response from terminal.", logging.ERROR)
+        return False
     if res.retcode not in (mt5.TRADE_RETCODE_DONE, mt5.TRADE_RETCODE_DONE_PARTIAL):
         LOG(f"[ERR] MT5 close failed ticket {link.follower_ticket}: retcode={res.retcode}", logging.ERROR)
         return False
+
     LOG(f"[MT5] Closed ticket {link.follower_ticket} (master {link.master_order_number}).")
     return True
 
@@ -841,10 +920,15 @@ def mt5_adjust_volume(link: FollowerLink, new_lots: float) -> bool:
             "magic": MAGIC_NUMBER,
             "comment": f"Volume reduce copy of SiRiX {link.master_order_number}",
         }
+
     res = _order_send_with_fallback(req, symbol)
+    if not res:
+        LOG(f"[ERR] Volume adjust failed ticket {link.follower_ticket}: no response from terminal.", logging.ERROR)
+        return False
     if res.retcode not in (mt5.TRADE_RETCODE_DONE, mt5.TRADE_RETCODE_DONE_PARTIAL, mt5.TRADE_RETCODE_PLACED):
         LOG(f"[ERR] Volume adjust failed ticket {link.follower_ticket}: retcode={res.retcode}", logging.ERROR)
         return False
+
     new_pos = mt5.positions_get(ticket=link.follower_ticket)
     if new_pos:
         link.follower_volume = float(new_pos[0].volume)
@@ -876,10 +960,15 @@ def mt5_update_stops(link: FollowerLink, sl: Optional[float], tp: Optional[float
         "magic": MAGIC_NUMBER,
         "comment": f"Stops sync {link.master_order_number}",
     }
+
     res = _order_send_with_fallback(req, symbol)
+    if not res:
+        LOG(f"[ERR] SL/TP update failed ticket {ticket}: no response from terminal.", logging.ERROR)
+        return False
     if res.retcode not in (mt5.TRADE_RETCODE_DONE, mt5.TRADE_RETCODE_PLACED, mt5.TRADE_RETCODE_DONE_PARTIAL):
         LOG(f"[ERR] SL/TP update failed ticket {ticket}: retcode={res.retcode}", logging.ERROR)
         return False
+
     LOG(f"[MT5] Updated stops ticket {ticket}: SL={sl} TP={tp}")
     link.sl, link.tp = sl, tp
     return True
@@ -1000,7 +1089,8 @@ def _target_lots_for_open(mp: MasterPosition) -> float:
         lots = risk_percent_lots(mapped_symbol, d)
         return normalize_lot(mapped_symbol, lots)
     else:
-        return normalize_lot(mapped_symbol, convert_master_amount_to_lots(mp.symbol, mp.amount, follower_symbol=mapped_symbol))
+        return normalize_lot(mapped_symbol,
+                             convert_master_amount_to_lots(mp.symbol, mp.amount, follower_symbol=mapped_symbol))
 
 def open_follower_for_master(mp: MasterPosition) -> None:
     lots = _target_lots_for_open(mp)
@@ -1409,6 +1499,7 @@ def poll_loop():
     _ensure_daily_state()
     load_links_from_mt5()
 
+    LOG(f"[mode] 1:1 lot mirroring active (VOLUME_MODE={VOLUME_MODE}, LOT_MULTIPLIER={LOT_MULTIPLIER})")
     LOG("[init] Copier running. Ctrl+C to stop.")
 
     while running:
