@@ -101,7 +101,7 @@ POLL_INTERVAL_SEC: float = 1.0
 
 # ---- MT5 follower (terminal must be running) ----
 AUTO_LOGIN: bool = True
-MT5_LOGIN: int = 11029797
+MT5_LOGIN: int =  11029797
 MT5_PASSWORD: str = "0D5eq@dT"
 MT5_SERVER: str = "VantageGlobalPrimeLLP-Demo"
 
@@ -109,7 +109,7 @@ MT5_SERVER: str = "VantageGlobalPrimeLLP-Demo"
 AUTO_LAUNCH_MT5: bool = True
 
 # Full path to the terminal executable you want to use for this copier:
-MT5_TERMINAL_PATH: str = r"C:\MT5\TradeCopier\terminal64.exe"
+MT5_TERMINAL_PATH: str = r"C:\MT5\TradeCopier-214422\terminal64.exe"
 
 # Optional command-line args (common: '/portable' to keep data in the exe folder)
 MT5_TERMINAL_ARGS = []
@@ -119,6 +119,10 @@ MT5_WORKDIR: Optional[str] = None
 
 # How long to wait (seconds) after launching MT5 before giving up on initialize
 MT5_STARTUP_WAIT_SEC: float = 25.0
+
+# How long to wait for a valid (non-zero) tick before giving up
+PRICE_WAIT_MAX_MS: int = 1500   # total wait ~1.5s
+PRICE_WAIT_STEP_MS: int = 100   # poll every 100ms
 
 
 # ---- Copier behavior ----
@@ -142,6 +146,7 @@ SYMBOL_MAP = {
     "GBPUSD": "GBPUSD",
     "USDCAD": "USDCAD",
     "USDJPY": "USDJPY",
+    "GBPJPY": "GBPJPY",
 }
 
 # ---- Allowed MT5 symbols (whitelist). Empty set => allow any mapped symbol. ----
@@ -158,6 +163,7 @@ SYMBOL_UNITS_PER_LOT = {
     "GBPUSD": 100_000,
     "USDCAD": 100_000,
     "USDJPY": 100_000,
+    "GBPJPY": 100_000,
     "XAUUSD": 100,
     "XAGUSD": 1000,
     "S&P500": 50,
@@ -171,6 +177,7 @@ FOLLOWER_UNITS_PER_LOT = {
     "GBPUSD": 100_000,
     "USDCAD": 100_000,
     "USDJPY": 100_000,
+    "GBPJPY": 100_000,
     "XAUUSD": 100,
     "XAGUSD": 5000,
     "SP500.i": 1,
@@ -434,10 +441,18 @@ def mt5_symbol_prepare(symbol: str) -> bool:
 def mt5_current_prices(symbol: str) -> Tuple[Optional[float], Optional[float]]:
     if DRY_RUN:
         return 1.0, 1.0
-    tick = mt5.symbol_info_tick(symbol)
-    if not tick:
-        return None, None
-    return tick.bid, tick.ask
+
+    # Try multiple times to get a non-zero bid/ask
+    attempts = max(1, PRICE_WAIT_MAX_MS // max(1, PRICE_WAIT_STEP_MS))
+    for _ in range(attempts):
+        tick = mt5.symbol_info_tick(symbol)
+        if tick:
+            bid = float(getattr(tick, "bid", 0.0) or 0.0)
+            ask = float(getattr(tick, "ask", 0.0) or 0.0)
+            if bid > 0 and ask > 0:
+                return bid, ask
+        time.sleep(PRICE_WAIT_STEP_MS / 1000.0)
+    return None, None
 
 def account_equity() -> Optional[float]:
     if DRY_RUN:
@@ -520,25 +535,32 @@ def normalize_lot(symbol: str, lots: float) -> float:
     lots = max(lots, 0.0)
     if DRY_RUN:
         return round(lots, 2)
+
     info = mt5.symbol_info(symbol)
     if info is None:
         return round(lots, 2)
 
-    step   = getattr(info, "volume_step", 0.01) or 0.01
-    min_vol= getattr(info, "volume_min", 0.01) or 0.01
-    max_vol= getattr(info, "volume_max", 100.0) or 100.0
+    step    = float(getattr(info, "volume_step", 0.01) or 0.01)
+    min_vol = float(getattr(info, "volume_min", 0.01) or 0.01)
+    max_vol = float(getattr(info, "volume_max", 100.0) or 100.0)
+
+    if step <= 0:
+        step = 0.01
 
     q = lots / step
     mode = globals().get("LOT_ROUNDING_MODE", "nearest")
+
+    # Implement deterministic rounding (no banker’s rounding surprises)
     if mode == "down":
-        q = math.floor(q + 1e-9)
+        q = math.floor(q + 1e-12)
     elif mode == "up":
-        q = math.ceil(q - 1e-9)
-    else:  # nearest
-        q = round(q)
+        q = math.ceil(q - 1e-12)
+    else:  # "nearest" -> half-up for positive numbers (2.5 -> 3)
+        # since lots >= 0 in our flow, this is safe and intuitive
+        q = math.floor(q + 0.5)
 
     lots_q = q * step
-    # clean small float noise and clamp
+    # clean small float noise and clamp broker limits
     lots_q = float(f"{lots_q:.8f}")
     lots_q = max(min_vol, min(lots_q, max_vol))
     return lots_q
