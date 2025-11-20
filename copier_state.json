@@ -170,5 +170,73 @@
   "2025-10-27": {
     "day_start_equity": 101060.16,
     "halted": false
+  },
+  "2025-10-28": {
+    "day_start_equity": 98406.6,
+    "halted": false
+  },
+  "2025-10-29": {
+    "day_start_equity": 101496.84,
+    "halted": false
+  },
+  "2025-10-30": {
+    "day_start_equity": 97697.6,
+    "halted": false
+  },
+  "2025-10-31": {
+    "day_start_equity": 98159.03,
+    "halted": false
+  },
+  "2025-11-01": {
+    "day_start_equity": 98728.4,
+    "halted": false
+  },
+  "2025-11-02": {
+    "day_start_equity": 98728.4,
+    "halted": false
+  },
+  "2025-11-03": {
+    "day_start_equity": 98728.4,
+    "halted": false
+  },
+  "2025-11-04": {
+    "day_start_equity": 98582.4,
+    "halted": false
+  },
+  "2025-11-05": {
+    "day_start_equity": 98302.8,
+    "halted": false
+  },
+  "2025-11-06": {
+    "day_start_equity": 98302.8,
+    "halted": false
+  },
+  "2025-11-07": {
+    "day_start_equity": 98743.41,
+    "halted": false
+  },
+  "2025-11-08": {
+    "day_start_equity": 98524.81,
+    "halted": false
+  },
+  "2025-11-09": {
+    "day_start_equity": 98524.81,
+    "halted": false
+  },
+  "2025-11-10": {
+    "day_start_equity": 98394.21,
+    "halted": false
+  },
+  "2025-11-11": {
+    "day_start_equity": 97794.51,
+    "halted": false
+  },
+  "2025-11-12": {
+    "day_start_equity": 97882.84,
+    "halted": false
+  },
+  "2025-11-13": {
+    "day_start_equity": 97165.68,
+    "halted": false
   }
 }
