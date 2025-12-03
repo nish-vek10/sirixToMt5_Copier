@@ -46,8 +46,8 @@ STATE_PATH = Path("xau_cluster_inverse_multi_state.json")
 # MT5 ACCOUNT CONFIG
 # =========================
 
-MT5_LOGIN         = 52611391
-MT5_PASSWORD      = "D&KvS$2KPBrYso"
+MT5_LOGIN         = 52633821
+MT5_PASSWORD      = "8C$b2xThREvwdZ"
 MT5_SERVER        = "ICMarketsSC-Demo"
 MT5_TERMINAL_PATH = r"C:\MT5\TradeCopier-Cluster\terminal64.exe"
 
@@ -689,8 +689,8 @@ def build_events_from_sirix(
                     f"[EVENT] order={order_id} user={user_id} side={side} "
                     f"lots={lots} "
                     f"open_time_utc={open_time.isoformat()} "
-                    f"seen_utc={now_utc.isoformat()} "
-                    f"seen_local={now_loc.isoformat()}"
+                    f"seen_local={now_utc.isoformat()} "
+                    # f"seen_local={now_loc.isoformat()}"
                 )
 
         except Exception as e:
@@ -1163,7 +1163,7 @@ def build_strategies() -> List[StrategyState]:
         use_tp_exit=True,
         use_time_exit=False,
         direction_mode="inverse",
-        max_open_positions=2,
+        max_open_positions=3,
         risk_mode="dynamic_pct",
         risk_percent=0.02,
         fixed_lots=0.10,
@@ -1191,7 +1191,7 @@ def build_strategies() -> List[StrategyState]:
         use_tp_exit=True,
         use_time_exit=False,
         direction_mode="inverse",
-        max_open_positions=2,
+        max_open_positions=3,
         risk_mode="dynamic_pct",
         risk_percent=0.02,
         fixed_lots=0.10,
@@ -1219,7 +1219,7 @@ def build_strategies() -> List[StrategyState]:
         use_tp_exit=True,
         use_time_exit=False,
         direction_mode="inverse",
-        max_open_positions=2,
+        max_open_positions=3,
         risk_mode="dynamic_pct",
         risk_percent=0.02,
         fixed_lots=0.10,
