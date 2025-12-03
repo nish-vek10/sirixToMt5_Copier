@@ -1,0 +1,132 @@
+{
+  "bot_name": "XAU_SiRiX_ClusterInverse_multi",
+  "updated_at_utc": "2025-12-03T15:00:55.140955+00:00",
+  "strategies": [
+    {
+      "name": "Inv_T29_K3_H5_ATRtrail",
+      "magic": 880001,
+      "config": {
+        "t_seconds": 29,
+        "k_unique": 3,
+        "hold_minutes": 5,
+        "sl_distance": 2.0,
+        "tp_R_multiple": 1.0,
+        "stop_mode": "atr_trailing",
+        "atr_period": 5,
+        "atr_init_mult": 3.0,
+        "atr_trail_mult": 2.0,
+        "chan_lookback": null,
+        "direction_mode": "inverse",
+        "use_tp_exit": true,
+        "use_time_exit": false,
+        "risk_mode": "dynamic_pct",
+        "risk_percent": 0.02,
+        "fixed_lots": 0.1
+      },
+      "cluster": {
+        "window_seconds": 29,
+        "k_unique": 3,
+        "last_cluster_side": null,
+        "last_cluster_time_utc": null,
+        "events_in_window": 1,
+        "unique_buy_users_in_window": 1,
+        "unique_sell_users_in_window": 0,
+        "last_event_time_utc": "2025-12-03T14:36:59.369000+00:00",
+        "recent_events": [
+          {
+            "order_id": "254337120",
+            "user_id": "261577",
+            "side": "buy",
+            "lots": 0.02,
+            "time_utc": "2025-12-03T14:36:59.369000+00:00"
+          }
+        ]
+      },
+      "open_positions": []
+    },
+    {
+      "name": "Inv_T29_K3_H5_ATRstatic",
+      "magic": 880002,
+      "config": {
+        "t_seconds": 29,
+        "k_unique": 3,
+        "hold_minutes": 5,
+        "sl_distance": 2.0,
+        "tp_R_multiple": 1.0,
+        "stop_mode": "atr_static",
+        "atr_period": 5,
+        "atr_init_mult": 4.0,
+        "atr_trail_mult": 2.0,
+        "chan_lookback": null,
+        "direction_mode": "inverse",
+        "use_tp_exit": true,
+        "use_time_exit": false,
+        "risk_mode": "dynamic_pct",
+        "risk_percent": 0.02,
+        "fixed_lots": 0.1
+      },
+      "cluster": {
+        "window_seconds": 29,
+        "k_unique": 3,
+        "last_cluster_side": null,
+        "last_cluster_time_utc": null,
+        "events_in_window": 1,
+        "unique_buy_users_in_window": 1,
+        "unique_sell_users_in_window": 0,
+        "last_event_time_utc": "2025-12-03T14:36:59.369000+00:00",
+        "recent_events": [
+          {
+            "order_id": "254337120",
+            "user_id": "261577",
+            "side": "buy",
+            "lots": 0.02,
+            "time_utc": "2025-12-03T14:36:59.369000+00:00"
+          }
+        ]
+      },
+      "open_positions": []
+    },
+    {
+      "name": "Inv_T30_K3_H15_Chandelier",
+      "magic": 880003,
+      "config": {
+        "t_seconds": 30,
+        "k_unique": 3,
+        "hold_minutes": 15,
+        "sl_distance": 2.0,
+        "tp_R_multiple": 1.0,
+        "stop_mode": "chandelier",
+        "atr_period": 5,
+        "atr_init_mult": 3.0,
+        "atr_trail_mult": 2.0,
+        "chan_lookback": 30,
+        "direction_mode": "inverse",
+        "use_tp_exit": true,
+        "use_time_exit": false,
+        "risk_mode": "dynamic_pct",
+        "risk_percent": 0.02,
+        "fixed_lots": 0.1
+      },
+      "cluster": {
+        "window_seconds": 30,
+        "k_unique": 3,
+        "last_cluster_side": null,
+        "last_cluster_time_utc": null,
+        "events_in_window": 1,
+        "unique_buy_users_in_window": 1,
+        "unique_sell_users_in_window": 0,
+        "last_event_time_utc": "2025-12-03T14:36:59.369000+00:00",
+        "recent_events": [
+          {
+            "order_id": "254337120",
+            "user_id": "261577",
+            "side": "buy",
+            "lots": 0.02,
+            "time_utc": "2025-12-03T14:36:59.369000+00:00"
+          }
+        ]
+      },
+      "open_positions": []
+    }
+  ]
+}
