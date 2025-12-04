@@ -1,6 +1,6 @@
 {
   "bot_name": "XAU_SiRiX_ClusterInverse_multi",
-  "updated_at_utc": "2025-12-03T19:02:52.812675+00:00",
+  "updated_at_utc": "2025-12-04T10:16:16.522467+00:00",
   "strategies": [
     {
       "name": "Inv_ATRtrail",
@@ -28,26 +28,11 @@
         "k_unique": 3,
         "last_cluster_side": null,
         "last_cluster_time_utc": null,
-        "events_in_window": 2,
-        "unique_buy_users_in_window": 1,
-        "unique_sell_users_in_window": 1,
-        "last_event_time_utc": "2025-12-03T18:39:52.411000+00:00",
-        "recent_events": [
-          {
-            "order_id": "242014116",
-            "user_id": "258871",
-            "side": "sell",
-            "lots": 0.01,
-            "time_utc": "2025-12-03T18:39:40.521000+00:00"
-          },
-          {
-            "order_id": "150283504",
-            "user_id": "165007",
-            "side": "buy",
-            "lots": 0.01,
-            "time_utc": "2025-12-03T18:39:52.411000+00:00"
-          }
-        ]
+        "events_in_window": 0,
+        "unique_buy_users_in_window": 0,
+        "unique_sell_users_in_window": 0,
+        "last_event_time_utc": null,
+        "recent_events": []
       },
       "open_positions": []
     },
@@ -77,26 +62,11 @@
         "k_unique": 3,
         "last_cluster_side": null,
         "last_cluster_time_utc": null,
-        "events_in_window": 2,
-        "unique_buy_users_in_window": 1,
-        "unique_sell_users_in_window": 1,
-        "last_event_time_utc": "2025-12-03T18:39:52.411000+00:00",
-        "recent_events": [
-          {
-            "order_id": "242014116",
-            "user_id": "258871",
-            "side": "sell",
-            "lots": 0.01,
-            "time_utc": "2025-12-03T18:39:40.521000+00:00"
-          },
-          {
-            "order_id": "150283504",
-            "user_id": "165007",
-            "side": "buy",
-            "lots": 0.01,
-            "time_utc": "2025-12-03T18:39:52.411000+00:00"
-          }
-        ]
+        "events_in_window": 0,
+        "unique_buy_users_in_window": 0,
+        "unique_sell_users_in_window": 0,
+        "last_event_time_utc": null,
+        "recent_events": []
       },
       "open_positions": []
     },
@@ -126,26 +96,11 @@
         "k_unique": 3,
         "last_cluster_side": null,
         "last_cluster_time_utc": null,
-        "events_in_window": 2,
-        "unique_buy_users_in_window": 1,
-        "unique_sell_users_in_window": 1,
-        "last_event_time_utc": "2025-12-03T18:39:52.411000+00:00",
-        "recent_events": [
-          {
-            "order_id": "242014116",
-            "user_id": "258871",
-            "side": "sell",
-            "lots": 0.01,
-            "time_utc": "2025-12-03T18:39:40.521000+00:00"
-          },
-          {
-            "order_id": "150283504",
-            "user_id": "165007",
-            "side": "buy",
-            "lots": 0.01,
-            "time_utc": "2025-12-03T18:39:52.411000+00:00"
-          }
-        ]
+        "events_in_window": 0,
+        "unique_buy_users_in_window": 0,
+        "unique_sell_users_in_window": 0,
+        "last_event_time_utc": null,
+        "recent_events": []
       },
       "open_positions": []
     }
