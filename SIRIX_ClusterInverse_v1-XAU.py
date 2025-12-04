@@ -46,10 +46,10 @@ STATE_PATH = Path("xau_cluster_inverse_multi_state.json")
 # MT5 ACCOUNT CONFIG
 # =========================
 
-MT5_LOGIN         = 52634931
-MT5_PASSWORD      = "8r@!htozDrrXCj"
+MT5_LOGIN         = 52633821
+MT5_PASSWORD      = "8C$b2xThREvwdZ"
 MT5_SERVER        = "ICMarketsSC-Demo"
-MT5_TERMINAL_PATH = r"C:\MT5\Josh Terminal\terminal64.exe"
+MT5_TERMINAL_PATH = r"C:\MT5\TradeCopier-Cluster\terminal64.exe"
 
 LOCAL_TZ   = timezone("Europe/London")
 SIRIX_TZ   = timezone("Asia/Jerusalem")  # Sirix server timezone
