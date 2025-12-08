@@ -1,0 +1,76 @@
+{
+  "bot_name": "BTC_SiRiX_ClusterInverse_multi",
+  "updated_at_utc": "2025-12-08T20:51:58.032599+00:00",
+  "strategies": [
+    {
+      "name": "BTC_ChandTrail",
+      "magic": 990001,
+      "config": {
+        "t_seconds": 60,
+        "k_unique": 2,
+        "hold_minutes": 30,
+        "sl_distance": 50.0,
+        "tp_R_multiple": 2.0,
+        "stop_mode": "chandelier_trailing_only",
+        "atr_period": 5,
+        "atr_init_mult": 3.0,
+        "atr_trail_mult": 2.0,
+        "chan_lookback": 10,
+        "direction_mode": "inverse",
+        "use_tp_exit": false,
+        "use_time_exit": false,
+        "risk_mode": "dynamic_pct",
+        "risk_percent": 0.01,
+        "fixed_lots": 0.1
+      },
+      "cluster": {
+        "window_seconds": 60,
+        "k_unique": 2,
+        "last_cluster_side": null,
+        "last_cluster_time_utc": null,
+        "events_in_window": 0,
+        "unique_buy_users_in_window": 0,
+        "unique_sell_users_in_window": 0,
+        "last_event_time_utc": null,
+        "recent_events": []
+      },
+      "open_positions": [],
+      "pending_orders": []
+    },
+    {
+      "name": "BTC_ChandTP",
+      "magic": 990002,
+      "config": {
+        "t_seconds": 60,
+        "k_unique": 2,
+        "hold_minutes": 30,
+        "sl_distance": 50.0,
+        "tp_R_multiple": 2.0,
+        "stop_mode": "chandelier",
+        "atr_period": 5,
+        "atr_init_mult": 3.0,
+        "atr_trail_mult": 2.0,
+        "chan_lookback": 10,
+        "direction_mode": "inverse",
+        "use_tp_exit": true,
+        "use_time_exit": false,
+        "risk_mode": "dynamic_pct",
+        "risk_percent": 0.01,
+        "fixed_lots": 0.1
+      },
+      "cluster": {
+        "window_seconds": 60,
+        "k_unique": 2,
+        "last_cluster_side": null,
+        "last_cluster_time_utc": null,
+        "events_in_window": 0,
+        "unique_buy_users_in_window": 0,
+        "unique_sell_users_in_window": 0,
+        "last_event_time_utc": null,
+        "recent_events": []
+      },
+      "open_positions": [],
+      "pending_orders": []
+    }
+  ]
+}
