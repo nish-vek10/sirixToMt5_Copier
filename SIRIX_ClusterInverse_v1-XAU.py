@@ -170,7 +170,7 @@ class StrategyConfig:
     direction_mode: str = "inverse"   # keep as "inverse"
     max_open_positions: int = 1
 
-    # Risk
+    # --- Risk ---
     # "fixed_lots"  -> use fixed_lots only
     # "dynamic_pct" -> risk_percent * current equity
     # "static_pct"  -> risk_percent * static_risk_base_balance
@@ -180,6 +180,13 @@ class StrategyConfig:
 
     # static base balance for static_pct mode (e.g. 10_000)
     static_risk_base_balance: float = 10_000.0
+
+    # when to start trailing in R units (open_R)
+    # None  => no R threshold (trail as before the feature)
+    # 0.3   => start trailing from +0.3R
+    # 0.5   => start trailing from +0.5R, etc.
+    # R in terms of profits 1R=TP as R:R is 1:1
+    trail_start_R: Optional[float] = 1.0
 
 
 @dataclass
@@ -949,23 +956,31 @@ def modify_sl_tp(ticket: int, cfg: StrategyConfig, new_sl: float, new_tp: Option
 
 def manage_trailing_stops(state: StrategyState):
     cfg = state.config
+
+    # Only for trailing-style engines
     if cfg.stop_mode not in ("atr_trailing", "chandelier"):
         return
     if not state.open_positions:
         return
 
+    # ---- Pull M1 candles, like in the backtest ----
     df = fetch_mt5_rates(
         MT5_SYMBOL,
         timeframe=mt5.TIMEFRAME_M1,
         bars=max(cfg.atr_period + 20, (cfg.chan_lookback or 0) + 5),
     )
     atr_val = compute_atr(df, cfg.atr_period)
+
     highest_high = df["high"].iloc[-(cfg.chan_lookback or 1):].max()
-    lowest_low = df["low"].iloc[-(cfg.chan_lookback or 1):].min()
+    lowest_low  = df["low"].iloc[-(cfg.chan_lookback or 1):].min()
+
+    last_bar_time = df["time"].iloc[-1]          # bar open time (UTC)
+    last_close    = float(df["close"].iloc[-1])  # use close for trailing calc
 
     point = SYMBOL_INFO.point
 
     for ticket, info in list(state.open_positions.items()):
+        # Re-fetch MT5 position to confirm it still exists
         poss = mt5.positions_get()
         pos = None
         if poss:
@@ -974,13 +989,35 @@ def manage_trailing_stops(state: StrategyState):
                     pos = p
                     break
         if pos is None:
+            # Position no longer exists → drop from state
             state.open_positions.pop(ticket, None)
             continue
 
-        current_price = pos.price_current
-        new_sl = info.sl_price  # start from current SL
+        # 1) Do NOT trail on the entry candle (give it a bar to breathe)
+        if info.entry_time >= last_bar_time:
+            continue
 
-        # --- Compute candidate SL for this stop_mode ---
+        current_price = last_close
+
+        # 2) Compute original SL distance (for R calculation)
+        sl_dist = abs(info.entry_price - info.sl_price)
+        if sl_dist <= 0:
+            continue
+
+        # Open R, same definition as backtest
+        if info.direction == "buy":
+            open_R = (current_price - info.entry_price) / sl_dist
+        else:
+            open_R = (info.entry_price - current_price) / sl_dist
+
+        # 3) Only start trailing once we're at least +trail_start_R in profit (per engine)
+        #    If trail_start_R is None → no R threshold (old behaviour).
+        if cfg.trail_start_R is not None and open_R < cfg.trail_start_R:
+            continue
+
+        new_sl = info.sl_price  # start from existing SL
+
+        # 4) Compute candidate trailing SL
         if cfg.stop_mode == "atr_trailing":
             if info.direction == "buy":
                 trail_sl = current_price - cfg.atr_trail_mult * atr_val
@@ -997,29 +1034,23 @@ def manage_trailing_stops(state: StrategyState):
                 chand_sl = lowest_low + cfg.atr_trail_mult * atr_val
                 new_sl = min(info.sl_price, chand_sl)
 
-        # --- Enforce broker stop-level rules relative to CURRENT price ---
+        # 5) Enforce broker stop-level vs CURRENT price (last_close)
         order_type = mt5.ORDER_TYPE_BUY if info.direction == "buy" else mt5.ORDER_TYPE_SELL
         new_sl, _ = enforce_stop_level(order_type, current_price, new_sl, info.tp_price)
 
-        # --- Extra safety: SL must be on the correct side of price ---
+        # 6) Safety: SL must be on correct side and not too close
         if info.direction == "buy":
-            # For a BUY, SL must be below current_price
             if new_sl >= current_price:
-                # Skip this update; broker would likely reject
-                # print(f"[SKIP] [{cfg.name}] New SL {new_sl} not below current price {current_price} for BUY")
                 continue
-            # Also keep at least 3 points away
             if current_price - new_sl < 3 * point:
                 continue
         else:
-            # For a SELL, SL must be above current_price
             if new_sl <= current_price:
-                # print(f"[SKIP] [{cfg.name}] New SL {new_sl} not above current price {current_price} for SELL")
                 continue
             if new_sl - current_price < 3 * point:
                 continue
 
-        # --- Only send modification if it's meaningfully different ---
+        # 7) Only send update if it meaningfully moves the SL
         if abs(new_sl - info.sl_price) > (2 * point):
             modify_sl_tp(ticket, cfg, new_sl, info.tp_price)
             info.sl_price = new_sl
@@ -1087,6 +1118,7 @@ def write_state_json(strategy_states: List[StrategyState]):
             payload["strategies"].append({
                 "name": cfg.name,
                 "magic": cfg.magic,
+
                 "config": {
                     "t_seconds": cfg.t_seconds,
                     "k_unique": cfg.k_unique,
@@ -1104,7 +1136,9 @@ def write_state_json(strategy_states: List[StrategyState]):
                     "risk_mode": cfg.risk_mode,
                     "risk_percent": cfg.risk_percent,
                     "fixed_lots": cfg.fixed_lots,
+                    "trail_start_R": cfg.trail_start_R,
                 },
+
                 "cluster": {
                     "window_seconds": ce.window_seconds,
                     "k_unique": ce.k_unique,
@@ -1167,6 +1201,7 @@ def build_strategies() -> List[StrategyState]:
         risk_mode="dynamic_pct",
         risk_percent=0.02,
         fixed_lots=0.10,
+        trail_start_R=0.3,  # start trailing from +XR for TP=1R scalper
     )
     strategies.append(StrategyState(
         config=cfg_a,
@@ -1195,6 +1230,7 @@ def build_strategies() -> List[StrategyState]:
         risk_mode="dynamic_pct",
         risk_percent=0.02,
         fixed_lots=0.10,
+        trail_start_R=None,      # this will be ignored as engine != trailing
     )
     strategies.append(StrategyState(
         config=cfg_b,
@@ -1223,6 +1259,7 @@ def build_strategies() -> List[StrategyState]:
         risk_mode="dynamic_pct",
         risk_percent=0.02,
         fixed_lots=0.10,
+        trail_start_R=None,  # start trailing from +XR for TP=1R scalper
     )
     strategies.append(StrategyState(
         config=cfg_c,

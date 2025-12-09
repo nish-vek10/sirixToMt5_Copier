@@ -180,13 +180,19 @@ class StrategyConfig:
 
     # Misc
     direction_mode: str = "inverse"
-    max_open_positions: int = 2
+    max_open_positions: int = 1
 
     # Risk
     risk_mode: str = "dynamic_pct"   # "fixed_lots", "dynamic_pct", "static_pct"
     risk_percent: float = 0.02       # 2% per trade
     fixed_lots: float = 0.10         # used when risk_mode="fixed_lots"
     static_risk_base_balance: float = 10_000.0  # used when risk_mode="static_pct"
+
+    # Trailing start in R (open_R):
+    #   None  -> no R threshold (trail as in the original behaviour)
+    #   0.5   -> start trailing from +0.5R
+    #   1.0   -> start trailing from +1R, etc.
+    trail_start_R: Optional[float] = 1.0
 
 
 @dataclass
@@ -965,10 +971,6 @@ def manage_trailing_stops(state: StrategyState):
     if not state.open_positions:
         return
 
-    # ---- CONFIG: when to start trailing in R units ----
-    # e.g. 0.5 = start trailing after +0.5R open profit
-    TRAIL_START_R = 0.5
-
     # Use M1 candle data, just like the backtest
     df = fetch_mt5_rates(
         MT5_SYMBOL,
@@ -1014,8 +1016,9 @@ def manage_trailing_stops(state: StrategyState):
         else:
             open_R = (info.entry_price - current_price) / sl_dist
 
-        # If not yet in enough profit, do not trail at all
-        if open_R < TRAIL_START_R:
+        # If not yet in enough profit, do not trail at all.
+        # If trail_start_R is None → no R threshold (original behaviour).
+        if cfg.trail_start_R is not None and open_R < cfg.trail_start_R:
             continue
 
         new_sl = info.sl_price
@@ -1221,6 +1224,7 @@ def write_state_json(strategy_states: List[StrategyState]):
                     "risk_mode": cfg.risk_mode,
                     "risk_percent": cfg.risk_percent,
                     "fixed_lots": cfg.fixed_lots,
+                    "trail_start_R": cfg.trail_start_R,
                 },
                 "cluster": {
                     "window_seconds": ce.window_seconds,
@@ -1252,14 +1256,14 @@ def write_state_json(strategy_states: List[StrategyState]):
 
 def build_strategies() -> List[StrategyState]:
     """
-    Build your two BTC engines:
+    Build the two BTC engines:
 
     Engine 1: chandelier_trailing_only, TP OFF, time exit OFF.
     Engine 2: chandelier, TP ON (2R), time exit OFF.
 
     Both:
       T=60s, K=2, hold=30min, SL50, ATR(5, I=3, T=2, LB=10),
-      direction_mode="inverse", max_open_positions=2, risk=2% dynamic_pct.
+      direction_mode="inverse", max_open_positions=2, risk=1% dynamic_pct.
     """
     strategies: List[StrategyState] = []
 
@@ -1284,6 +1288,7 @@ def build_strategies() -> List[StrategyState]:
         risk_mode="dynamic_pct",
         risk_percent=0.01,
         fixed_lots=0.10,
+        trail_start_R=1.0,
     )
     strategies.append(StrategyState(
         config=cfg_1,
@@ -1312,6 +1317,7 @@ def build_strategies() -> List[StrategyState]:
         risk_mode="dynamic_pct",
         risk_percent=0.01,
         fixed_lots=0.10,
+        trail_start_R=None,
     )
     strategies.append(StrategyState(
         config=cfg_2,

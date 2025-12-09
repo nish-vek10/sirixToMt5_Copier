@@ -1,6 +1,6 @@
 {
   "bot_name": "BTC_SiRiX_ClusterInverse_multi",
-  "updated_at_utc": "2025-12-08T20:51:58.032599+00:00",
+  "updated_at_utc": "2025-12-09T14:45:22.824195+00:00",
   "strategies": [
     {
       "name": "BTC_ChandTrail",
@@ -28,11 +28,20 @@
         "k_unique": 2,
         "last_cluster_side": null,
         "last_cluster_time_utc": null,
-        "events_in_window": 0,
+        "events_in_window": 1,
         "unique_buy_users_in_window": 0,
-        "unique_sell_users_in_window": 0,
-        "last_event_time_utc": null,
-        "recent_events": []
+        "unique_sell_users_in_window": 1,
+        "last_event_time_utc": "2025-12-09T14:09:44.350000+00:00",
+        "recent_events": [
+          {
+            "order_id": "257405002",
+            "user_id": "271334",
+            "side": "sell",
+            "lots": 0.15,
+            "time_utc": "2025-12-09T14:09:44.350000+00:00",
+            "open_rate": 90105.5
+          }
+        ]
       },
       "open_positions": [],
       "pending_orders": []
@@ -63,11 +72,20 @@
         "k_unique": 2,
         "last_cluster_side": null,
         "last_cluster_time_utc": null,
-        "events_in_window": 0,
+        "events_in_window": 1,
         "unique_buy_users_in_window": 0,
-        "unique_sell_users_in_window": 0,
-        "last_event_time_utc": null,
-        "recent_events": []
+        "unique_sell_users_in_window": 1,
+        "last_event_time_utc": "2025-12-09T14:09:44.350000+00:00",
+        "recent_events": [
+          {
+            "order_id": "257405002",
+            "user_id": "271334",
+            "side": "sell",
+            "lots": 0.15,
+            "time_utc": "2025-12-09T14:09:44.350000+00:00",
+            "open_rate": 90105.5
+          }
+        ]
       },
       "open_positions": [],
       "pending_orders": []
