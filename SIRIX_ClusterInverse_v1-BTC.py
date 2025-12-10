@@ -25,7 +25,9 @@ NEW vs XAU version:
 ===================
 
 - Uses **pending orders** (limit/stop) instead of market orders.
-- Pending order **price** = Sirix OpenRate of the **trigger event** (second unique user).
+- Pending order **price** = MT5 bid/ask ± LIMIT_OFFSET_DOLLARS at cluster trigger:
+    • BUY cluster  → bot SELL → SELL_LIMIT at (ask + LIMIT_OFFSET_DOLLARS)
+    • SELL cluster → bot BUY  → BUY_LIMIT at (bid - LIMIT_OFFSET_DOLLARS)
 - If pending order is **not filled in 3 minutes**, it is cancelled.
 - Max **2 open or pending positions** per engine.
 """
@@ -89,6 +91,15 @@ def make_comment(text: str) -> str:
 
 POLL_INTERVAL_SECONDS = 1
 CLUSTER_REFRACTORY_SECONDS = 1  # min gap between clusters of same SIDE per strategy
+
+# =========================
+# ENTRY OFFSET CONFIG
+# =========================
+
+# Offset in "dollars" (instrument price units) for limit entries:
+# - Inverse SELL  -> SELL_LIMIT at ask + LIMIT_OFFSET_DOLLARS
+# - Inverse BUY   -> BUY_LIMIT at bid - LIMIT_OFFSET_DOLLARS
+LIMIT_OFFSET_DOLLARS = 2.0
 
 # =========================
 # LOGGING / VERBOSITY
@@ -779,23 +790,28 @@ def calc_initial_sl_tp(side: str,
     return sl_price, tp_price
 
 
-def place_cluster_pending_entry(trade_side: str,
-                                cfg: StrategyConfig,
-                                trigger_price: float) -> Optional[int]:
+def place_cluster_pending_entry(
+    trade_side: str,
+    cfg: StrategyConfig,
+    offset_dollars: float,
+) -> Optional[int]:
     """
-    Place a pending (limit/stop) order at the Sirix trigger price.
+    Place a pending LIMIT order using MT5 bid/ask ± offset:
 
-    - trade_side: "buy" or "sell"
-    - trigger_price: Sirix OpenRate of the trigger event
+    - If trade_side == "buy"  (bot wants to BUY inverse a SELL cluster):
+        BUY_LIMIT at (bid - offset_dollars)
+
+    - If trade_side == "sell" (bot wants to SELL inverse a BUY cluster):
+        SELL_LIMIT at (ask + offset_dollars)
     """
-    # Try to get a live tick
+
+    # 1) Get current tick
     tick = mt5.symbol_info_tick(MT5_SYMBOL)
 
-    # Fallback: if no tick or zero quotes, use last candle close as a proxy
+    # Fallback: if no tick or invalid, use last M1 close as proxy for both bid/ask
     if tick is None or tick.bid <= 0 or tick.ask <= 0:
         print(f"[WARN] [{cfg.name}] No live tick for {MT5_SYMBOL}, "
-              f"falling back to last M1 close for limit/stop logic.")
-
+              f"falling back to last M1 close for limit logic.")
         try:
             df_last = fetch_mt5_rates(MT5_SYMBOL, timeframe=mt5.TIMEFRAME_M1, bars=1)
             last_close = float(df_last["close"].iloc[-1])
@@ -810,9 +826,22 @@ def place_cluster_pending_entry(trade_side: str,
             print(f"[ERROR] [{cfg.name}] Could not fetch last candle for {MT5_SYMBOL}: {e}")
             return None
 
-    # Use Sirix trigger price for the pending order
-    entry_price = round_price(trigger_price)
+    bid = float(tick.bid)
+    ask = float(tick.ask)
 
+    # 2) Decide LIMIT price from bid/ask ± offset
+    if trade_side == "buy":
+        # Buy cheaper than current bid
+        raw_price = bid - offset_dollars
+        order_type = mt5.ORDER_TYPE_BUY_LIMIT
+    else:
+        # Sell higher than current ask
+        raw_price = ask + offset_dollars
+        order_type = mt5.ORDER_TYPE_SELL_LIMIT
+
+    entry_price = round_price(raw_price)
+
+    # 3) ATR-based SL/TP around this LIMIT price
     atr_val = None
     if cfg.stop_mode in ("atr_static", "atr_trailing", "chandelier", "chandelier_trailing_only"):
         df = fetch_mt5_rates(
@@ -830,60 +859,21 @@ def place_cluster_pending_entry(trade_side: str,
         print(f"[ERROR] [{cfg.name}] Lot size <= 0, skipping entry.")
         return None
 
-    bid = tick.bid
-    ask = tick.ask
-    point = SYMBOL_INFO.point
     stops_level = getattr(SYMBOL_INFO, "trade_stops_level", 0) or 0
-    min_dist = stops_level * point
 
-    # Decide pending order type and ensure price is valid w.r.t. spread & min distance
-    if trade_side == "buy":
-        if entry_price <= bid:
-            # BUY_LIMIT must be below Bid, also respect min distance if broker uses it
-            limit_price = min(entry_price, bid - min_dist) if min_dist > 0 else entry_price
-            entry_price = round_price(limit_price)
-            order_type = mt5.ORDER_TYPE_BUY_LIMIT
-        elif entry_price >= ask:
-            # BUY_STOP must be above Ask (and above Ask + min_dist if needed)
-            stop_price = max(entry_price, ask + min_dist) if min_dist > 0 else entry_price
-            entry_price = round_price(stop_price)
-            order_type = mt5.ORDER_TYPE_BUY_STOP
-        else:
-            # Inside the spread → push to nearest valid side
-            # Here we choose to treat it as a STOP above Ask
-            stop_price = ask + max(min_dist, point)
-            entry_price = round_price(stop_price)
-            order_type = mt5.ORDER_TYPE_BUY_STOP
-
-    else:  # trade_side == "sell"
-        if entry_price >= ask:
-            # SELL_LIMIT must be above Ask (and Ask + min_dist if needed)
-            limit_price = max(entry_price, ask + min_dist) if min_dist > 0 else entry_price
-            entry_price = round_price(limit_price)
-            order_type = mt5.ORDER_TYPE_SELL_LIMIT
-        elif entry_price <= bid:
-            # SELL_STOP must be below Bid (and Bid - min_dist if needed)
-            stop_price = min(entry_price, bid - min_dist) if min_dist > 0 else entry_price
-            entry_price = round_price(stop_price)
-            order_type = mt5.ORDER_TYPE_SELL_STOP
-        else:
-            # Inside the spread → push to nearest valid side
-            # Here we choose to treat it as a STOP below Bid
-            stop_price = bid - max(min_dist, point)
-            entry_price = round_price(stop_price)
-            order_type = mt5.ORDER_TYPE_SELL_STOP
-
-    # Optional: debug log
+    # Debug log for sanity
     print(
         f"[PENDING_DEBUG] {cfg.name} side={trade_side} "
         f"type={order_type} entry={entry_price} "
-        f"bid={bid} ask={ask} stops_level={stops_level}"
+        f"bid={bid} ask={ask} offset={offset_dollars} "
+        f"stops_level={stops_level}"
     )
 
-    # Enforce broker stop-level rules
+    # 4) Enforce broker stop-level rules **for SL/TP**, relative to entry price
     base_order_type = mt5.ORDER_TYPE_BUY if trade_side == "buy" else mt5.ORDER_TYPE_SELL
     sl_price, tp_price = enforce_stop_level(base_order_type, entry_price, sl_price, tp_price)
 
+    # 5) Send the pending order
     req = {
         "action": mt5.TRADE_ACTION_PENDING,
         "symbol": MT5_SYMBOL,
@@ -1394,12 +1384,12 @@ def main_loop():
                 if cfg.direction_mode == "inverse":
                     trade_side = inverse_side(cluster_side)
 
-                limit_price = trigger_ev.open_rate
-                if limit_price <= 0:
-                    # fallback if for some reason we didn't have a proper open_rate
-                    continue
-
-                ticket = place_cluster_pending_entry(trade_side, cfg, limit_price)
+                # Use MT5 bid/ask ± LIMIT_OFFSET_DOLLARS instead of Sirix open_rate
+                ticket = place_cluster_pending_entry(
+                    trade_side=trade_side,
+                    cfg=cfg,
+                    offset_dollars=LIMIT_OFFSET_DOLLARS,
+                )
                 if ticket:
                     st.pending_orders[ticket] = utc_now()
 

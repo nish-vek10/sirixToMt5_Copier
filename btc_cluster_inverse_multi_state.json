@@ -1,6 +1,6 @@
 {
   "bot_name": "BTC_SiRiX_ClusterInverse_multi",
-  "updated_at_utc": "2025-12-09T14:45:22.824195+00:00",
+  "updated_at_utc": "2025-12-09T16:52:52.463213+00:00",
   "strategies": [
     {
       "name": "BTC_ChandTrail",
@@ -21,25 +21,34 @@
         "use_time_exit": false,
         "risk_mode": "dynamic_pct",
         "risk_percent": 0.01,
-        "fixed_lots": 0.1
+        "fixed_lots": 0.1,
+        "trail_start_R": 1.0
       },
       "cluster": {
         "window_seconds": 60,
         "k_unique": 2,
         "last_cluster_side": null,
         "last_cluster_time_utc": null,
-        "events_in_window": 1,
+        "events_in_window": 2,
         "unique_buy_users_in_window": 0,
         "unique_sell_users_in_window": 1,
-        "last_event_time_utc": "2025-12-09T14:09:44.350000+00:00",
+        "last_event_time_utc": "2025-12-09T16:24:51.684000+00:00",
         "recent_events": [
           {
-            "order_id": "257405002",
-            "user_id": "271334",
+            "order_id": "238902160",
+            "user_id": "249510",
             "side": "sell",
-            "lots": 0.15,
-            "time_utc": "2025-12-09T14:09:44.350000+00:00",
-            "open_rate": 90105.5
+            "lots": 0.01,
+            "time_utc": "2025-12-09T16:24:02.058000+00:00",
+            "open_rate": 94211.5
+          },
+          {
+            "order_id": "238902162",
+            "user_id": "249510",
+            "side": "sell",
+            "lots": 0.01,
+            "time_utc": "2025-12-09T16:24:51.684000+00:00",
+            "open_rate": 94137.5
           }
         ]
       },
@@ -65,25 +74,34 @@
         "use_time_exit": false,
         "risk_mode": "dynamic_pct",
         "risk_percent": 0.01,
-        "fixed_lots": 0.1
+        "fixed_lots": 0.1,
+        "trail_start_R": null
       },
       "cluster": {
         "window_seconds": 60,
         "k_unique": 2,
         "last_cluster_side": null,
         "last_cluster_time_utc": null,
-        "events_in_window": 1,
+        "events_in_window": 2,
         "unique_buy_users_in_window": 0,
         "unique_sell_users_in_window": 1,
-        "last_event_time_utc": "2025-12-09T14:09:44.350000+00:00",
+        "last_event_time_utc": "2025-12-09T16:24:51.684000+00:00",
         "recent_events": [
           {
-            "order_id": "257405002",
-            "user_id": "271334",
+            "order_id": "238902160",
+            "user_id": "249510",
             "side": "sell",
-            "lots": 0.15,
-            "time_utc": "2025-12-09T14:09:44.350000+00:00",
-            "open_rate": 90105.5
+            "lots": 0.01,
+            "time_utc": "2025-12-09T16:24:02.058000+00:00",
+            "open_rate": 94211.5
+          },
+          {
+            "order_id": "238902162",
+            "user_id": "249510",
+            "side": "sell",
+            "lots": 0.01,
+            "time_utc": "2025-12-09T16:24:51.684000+00:00",
+            "open_rate": 94137.5
           }
         ]
       },
